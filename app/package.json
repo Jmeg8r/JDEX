@@ -3,9 +3,28 @@
   "version": "2.0.0",
   "type": "module",
   "description": "Johnny Decimal Index Manager - Personal Knowledge Organization System",
-  "author": "James",
+  "author": {
+    "name": "James Cruce",
+    "email": "james@astgl.com",
+    "url": "https://astgl.com"
+  },
   "license": "MIT",
-  "private": true,
+  "private": false,
+  "homepage": "https://github.com/Jmeg8r/JDEX#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jmeg8r/JDEX.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jmeg8r/JDEX/issues"
+  },
+  "keywords": [
+    "johnny-decimal",
+    "organization",
+    "productivity",
+    "file-management",
+    "knowledge-management"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -32,28 +51,67 @@
     "electron": "^28.0.0",
     "electron-builder": "^24.9.0",
     "concurrently": "^8.2.0",
-    "wait-on": "^7.2.0"
+    "wait-on": "^7.2.0",
+    "@electron/notarize": "^2.1.0"
   },
   "main": "electron/main.js",
   "build": {
-    "appId": "com.jdex.app",
+    "appId": "com.astgl.jdex",
     "productName": "JDex",
+    "copyright": "Copyright © 2024-2025 James Cruce / ASTGL",
+    "afterSign": "scripts/notarize.js",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
-      "electron/**/*"
+      "electron/**/*",
+      "scripts/**/*"
     ],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": ["dmg", "zip"]
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "JDex ${version}",
+      "icon": "build/icon.icns",
+      "background": null,
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": ["nsis", "portable"]
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "icon": "build/icon.png",
+      "target": ["AppImage", "deb"],
+      "category": "Office"
     }
   }
 }
