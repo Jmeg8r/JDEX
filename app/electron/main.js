@@ -1,12 +1,19 @@
 // Electron main process for JDex desktop app
-const { app, BrowserWindow, Menu, shell } = require('electron');
-const path = require('path');
+import { app, BrowserWindow, Menu, shell } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ES modules don't have __dirname, so we need to create it
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 // Only load on Windows where squirrel installer is used
 if (process.platform === 'win32') {
   try {
-    if (require('electron-squirrel-startup')) {
+    const squirrelStartup = await import('electron-squirrel-startup');
+    if (squirrelStartup.default) {
       app.quit();
     }
   } catch (e) {
@@ -106,7 +113,7 @@ const menuTemplate = [
       },
       {
         label: 'JDex Documentation',
-        click: () => shell.openExternal('https://github.com/')
+        click: () => shell.openExternal('https://github.com/Jmeg8r/JDEX')
       }
     ]
   }
