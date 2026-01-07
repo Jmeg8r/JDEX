@@ -320,7 +320,7 @@ function CategoryTree({ areas, categories, selectedCategory, onSelectCategory, o
 }
 
 // New Folder Modal
-function NewFolderModal({ isOpen, onClose, categories, onSave, preselectedCategory }) {
+function NewFolderModal({ isOpen, onClose, categories, folders, onSave, preselectedCategory }) {
   const [formData, setFormData] = useState({
     category_id: '',
     name: '',
@@ -333,22 +333,44 @@ function NewFolderModal({ isOpen, onClose, categories, onSave, preselectedCatego
   });
   const [suggestedNumber, setSuggestedNumber] = useState('');
   const [suggestedSeq, setSuggestedSeq] = useState(1);
+  // Track when modal was last opened to force recalculation
+  const [openTimestamp, setOpenTimestamp] = useState(0);
   
+  // Reset form when modal opens
   useEffect(() => {
-    if (preselectedCategory) {
-      setFormData(prev => ({ ...prev, category_id: preselectedCategory.id.toString() }));
+    if (isOpen) {
+      setOpenTimestamp(Date.now());
+      const categoryId = preselectedCategory?.id.toString() || '';
+      setFormData({
+        category_id: categoryId,
+        name: '',
+        description: '',
+        sensitivity: 'standard',
+        location: '',
+        storage_path: '',
+        keywords: '',
+        notes: ''
+      });
     }
-  }, [preselectedCategory]);
+  }, [isOpen, preselectedCategory]);
   
+  // Calculate next folder number - runs when modal opens OR category changes OR folders change
   useEffect(() => {
-    if (formData.category_id) {
-      const next = getNextFolderNumber(parseInt(formData.category_id));
-      if (next) {
-        setSuggestedNumber(next.folder_number);
-        setSuggestedSeq(next.sequence);
-      }
+    if (isOpen && formData.category_id) {
+      // Small delay to ensure DB is fully updated
+      const timer = setTimeout(() => {
+        const next = getNextFolderNumber(parseInt(formData.category_id));
+        if (next) {
+          setSuggestedNumber(next.folder_number);
+          setSuggestedSeq(next.sequence);
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    } else if (isOpen) {
+      setSuggestedNumber('');
+      setSuggestedSeq(1);
     }
-  }, [formData.category_id]);
+  }, [isOpen, formData.category_id, folders.length, openTimestamp]);
   
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -361,16 +383,7 @@ function NewFolderModal({ isOpen, onClose, categories, onSave, preselectedCatego
       category_id: parseInt(formData.category_id)
     });
     
-    setFormData({
-      category_id: preselectedCategory?.id.toString() || '',
-      name: '',
-      description: '',
-      sensitivity: 'standard',
-      location: '',
-      storage_path: '',
-      keywords: '',
-      notes: ''
-    });
+    // Don't reset form here - let the useEffect handle it when modal reopens
     onClose();
   };
   
@@ -535,7 +548,7 @@ function NewFolderModal({ isOpen, onClose, categories, onSave, preselectedCatego
 }
 
 // New Item Modal
-function NewItemModal({ isOpen, onClose, folders, onSave, preselectedFolder }) {
+function NewItemModal({ isOpen, onClose, folders, items, onSave, preselectedFolder }) {
   const [formData, setFormData] = useState({
     folder_id: '',
     name: '',
@@ -550,22 +563,46 @@ function NewItemModal({ isOpen, onClose, folders, onSave, preselectedFolder }) {
   });
   const [suggestedNumber, setSuggestedNumber] = useState('');
   const [suggestedSeq, setSuggestedSeq] = useState(1);
+  // Track when modal was last opened to force recalculation
+  const [openTimestamp, setOpenTimestamp] = useState(0);
   
+  // Reset form when modal opens
   useEffect(() => {
-    if (preselectedFolder) {
-      setFormData(prev => ({ ...prev, folder_id: preselectedFolder.id.toString() }));
+    if (isOpen) {
+      setOpenTimestamp(Date.now());
+      const folderId = preselectedFolder?.id.toString() || '';
+      setFormData({
+        folder_id: folderId,
+        name: '',
+        description: '',
+        file_type: '',
+        sensitivity: 'inherit',
+        location: '',
+        storage_path: '',
+        file_size: '',
+        keywords: '',
+        notes: ''
+      });
     }
-  }, [preselectedFolder]);
+  }, [isOpen, preselectedFolder]);
   
+  // Calculate next item number - runs when modal opens OR folder changes OR items change
   useEffect(() => {
-    if (formData.folder_id) {
-      const next = getNextItemNumber(parseInt(formData.folder_id));
-      if (next) {
-        setSuggestedNumber(next.item_number);
-        setSuggestedSeq(next.sequence);
-      }
+    if (isOpen && formData.folder_id) {
+      // Small delay to ensure DB is fully updated
+      const timer = setTimeout(() => {
+        const next = getNextItemNumber(parseInt(formData.folder_id));
+        if (next) {
+          setSuggestedNumber(next.item_number);
+          setSuggestedSeq(next.sequence);
+        }
+      }, 10);
+      return () => clearTimeout(timer);
+    } else if (isOpen) {
+      setSuggestedNumber('');
+      setSuggestedSeq(1);
     }
-  }, [formData.folder_id]);
+  }, [isOpen, formData.folder_id, items.length, openTimestamp]);
   
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -579,18 +616,7 @@ function NewItemModal({ isOpen, onClose, folders, onSave, preselectedFolder }) {
       file_size: formData.file_size ? parseInt(formData.file_size) : null
     });
     
-    setFormData({
-      folder_id: preselectedFolder?.id.toString() || '',
-      name: '',
-      description: '',
-      file_type: '',
-      sensitivity: 'inherit',
-      location: '',
-      storage_path: '',
-      file_size: '',
-      keywords: '',
-      notes: ''
-    });
+    // Don't reset form here - let the useEffect handle it when modal reopens
     onClose();
   };
   
@@ -1486,6 +1512,9 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({});
   
+  // Refresh trigger - increment to force data reload
+  const [refreshKey, setRefreshKey] = useState(0);
+  
   // Navigation state
   const [currentView, setCurrentView] = useState('home'); // home, area, category, folder
   const [selectedArea, setSelectedArea] = useState(null);
@@ -1522,6 +1551,18 @@ export default function App() {
     setStats(getStats());
   }, []);
   
+  // Trigger refresh helper - call this after any data mutation
+  const triggerRefresh = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+  
+  // Reload data whenever refreshKey changes
+  useEffect(() => {
+    if (!isLoading) {
+      loadData();
+    }
+  }, [refreshKey, isLoading, loadData]);
+  
   // Handle search
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -1543,6 +1584,12 @@ export default function App() {
   const navigateTo = (type, data = null) => {
     setSearchQuery('');
     
+    // Ensure data is fresh before navigating
+    const freshFolders = getFolders();
+    const freshCategories = getCategories();
+    setFolders(freshFolders);
+    setCategories(freshCategories);
+    
     switch (type) {
       case 'home':
         setCurrentView('home');
@@ -1562,7 +1609,7 @@ export default function App() {
         setCurrentView('category');
         setSelectedCategory(data);
         setSelectedFolder(null);
-        // Find area for breadcrumb
+        // Find area for breadcrumb - use fresh data
         const area = areas.find(a => a.id === data.area_id);
         setBreadcrumbPath([
           { type: 'area', data: area, label: `${area?.range_start}-${area?.range_end} ${area?.name}` },
@@ -1572,9 +1619,11 @@ export default function App() {
       case 'folder':
         setCurrentView('folder');
         setSelectedFolder(data);
-        // Build full breadcrumb
+        // Refresh items for this folder
+        setItems(getItems(data.id));
+        // Build full breadcrumb - use fresh categories data
         const folder = data;
-        const cat = categories.find(c => c.id === folder.category_id);
+        const cat = freshCategories.find(c => c.id === folder.category_id);
         const ar = areas.find(a => a.id === cat?.area_id);
         setBreadcrumbPath([
           { type: 'area', data: ar, label: `${ar?.range_start}-${ar?.range_end} ${ar?.name}` },
@@ -1588,22 +1637,19 @@ export default function App() {
   // CRUD handlers
   const handleCreateFolder = (folderData) => {
     createFolder(folderData);
-    loadData();
-    if (selectedCategory) {
-      setFolders(getFolders(selectedCategory.id));
-    }
+    triggerRefresh();
   };
   
   const handleUpdateFolder = (folderData) => {
     updateFolder(folderData.id, folderData);
-    loadData();
+    triggerRefresh();
   };
   
   const handleDeleteFolder = (folder) => {
     if (confirm(`Delete folder "${folder.folder_number} ${folder.name}"? This cannot be undone.`)) {
       try {
         deleteFolder(folder.id);
-        loadData();
+        triggerRefresh();
         if (selectedFolder?.id === folder.id) {
           navigateTo('category', selectedCategory);
         }
@@ -1615,7 +1661,8 @@ export default function App() {
   
   const handleCreateItem = (itemData) => {
     createItem(itemData);
-    loadData();
+    triggerRefresh();
+    // Also refresh items for the current folder view
     if (selectedFolder) {
       setItems(getItems(selectedFolder.id));
     }
@@ -1623,7 +1670,7 @@ export default function App() {
   
   const handleUpdateItem = (itemData) => {
     updateItem(itemData.id, itemData);
-    loadData();
+    triggerRefresh();
     if (selectedFolder) {
       setItems(getItems(selectedFolder.id));
     }
@@ -1632,7 +1679,7 @@ export default function App() {
   const handleDeleteItem = (item) => {
     if (confirm(`Delete item "${item.item_number} ${item.name}"?`)) {
       deleteItem(item.id);
-      loadData();
+      triggerRefresh();
       if (selectedFolder) {
         setItems(getItems(selectedFolder.id));
       }
@@ -1643,13 +1690,13 @@ export default function App() {
     const file = e.target.files[0];
     if (file) {
       await importDatabase(file);
-      loadData();
+      triggerRefresh();
       navigateTo('home');
     }
   };
   
-  // Get display data based on current view
-  const getDisplayFolders = () => {
+  // Get display data based on current view - using useMemo for proper recalculation
+  const displayFolders = React.useMemo(() => {
     if (searchQuery.trim()) return searchResults.folders;
     if (selectedCategory) return folders.filter(f => f.category_id === selectedCategory.id);
     if (selectedArea) {
@@ -1657,13 +1704,13 @@ export default function App() {
       return folders.filter(f => areaCatIds.includes(f.category_id));
     }
     return folders;
-  };
+  }, [searchQuery, searchResults.folders, selectedCategory, selectedArea, folders, categories]);
   
-  const getDisplayItems = () => {
+  const displayItems = React.useMemo(() => {
     if (searchQuery.trim()) return searchResults.items;
     if (selectedFolder) return items;
     return [];
-  };
+  }, [searchQuery, searchResults.items, selectedFolder, items]);
   
   if (isLoading) {
     return (
@@ -1675,9 +1722,6 @@ export default function App() {
       </div>
     );
   }
-  
-  const displayFolders = getDisplayFolders();
-  const displayItems = getDisplayItems();
   
   return (
     <div className="min-h-screen flex">
@@ -1896,6 +1940,7 @@ export default function App() {
         isOpen={showNewFolderModal}
         onClose={() => setShowNewFolderModal(false)}
         categories={categories}
+        folders={folders}
         onSave={handleCreateFolder}
         preselectedCategory={selectedCategory}
       />
@@ -1904,6 +1949,7 @@ export default function App() {
         isOpen={showNewItemModal}
         onClose={() => setShowNewItemModal(false)}
         folders={folders}
+        items={items}
         onSave={handleCreateItem}
         preselectedFolder={selectedFolder}
       />
@@ -1927,7 +1973,7 @@ export default function App() {
         onClose={() => setShowSettings(false)}
         areas={areas}
         categories={categories}
-        onDataChange={loadData}
+        onDataChange={triggerRefresh}
       />
     </div>
   );

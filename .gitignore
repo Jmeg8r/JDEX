@@ -43,3 +43,9 @@ release/
 # Cache
 .cache/
 .parcel-cache/
+
+# Cursor IDE configuration
+.cursorignore
+jdex-cursor-config/
+jdex-cursor-config.zip
+rules/
