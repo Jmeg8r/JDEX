@@ -1,9 +1,9 @@
 /**
  * Cross-platform icon generator for JDex
  * Converts SVG source to platform-specific icon formats
- * 
+ *
  * Usage: node scripts/generate-icons.js
- * 
+ *
  * Requires: npm install sharp png-to-ico --save-dev
  */
 
@@ -33,10 +33,7 @@ async function generateIcons() {
   try {
     // Generate PNG at 512x512 (good for Linux and as source for ICO)
     console.log('📐 Generating icon.png (512x512)...');
-    await sharp(svgBuffer)
-      .resize(512, 512)
-      .png()
-      .toFile(path.join(BUILD_DIR, 'icon.png'));
+    await sharp(svgBuffer).resize(512, 512).png().toFile(path.join(BUILD_DIR, 'icon.png'));
     console.log('   ✅ icon.png created');
 
     // Generate multiple PNG sizes for Windows ICO
@@ -46,10 +43,7 @@ async function generateIcons() {
 
     for (const size of icoSizes) {
       console.log(`   📐 Generating ${size}x${size}...`);
-      const pngBuffer = await sharp(svgBuffer)
-        .resize(size, size)
-        .png()
-        .toBuffer();
+      const pngBuffer = await sharp(svgBuffer).resize(size, size).png().toBuffer();
       pngBuffers.push(pngBuffer);
     }
 
@@ -79,20 +73,18 @@ async function generateIcons() {
     }
 
     for (const { size, name } of macSizes) {
-      await sharp(svgBuffer)
-        .resize(size, size)
-        .png()
-        .toFile(path.join(iconsetDir, name));
+      await sharp(svgBuffer).resize(size, size).png().toFile(path.join(iconsetDir, name));
     }
     console.log('   ✅ macOS iconset PNGs created');
-    console.log('   ℹ️  Run "iconutil -c icns build/icon.iconset -o build/icon.icns" on macOS to create .icns');
+    console.log(
+      '   ℹ️  Run "iconutil -c icns build/icon.iconset -o build/icon.icns" on macOS to create .icns'
+    );
 
     console.log('\n✅ All icons generated successfully!');
     console.log('\nGenerated files:');
     console.log('   📁 build/icon.png (Linux)');
     console.log('   📁 build/icon.ico (Windows)');
     console.log('   📁 build/icon.iconset/ (macOS - needs iconutil)');
-
   } catch (error) {
     console.error('❌ Error generating icons:', error);
     process.exit(1);
