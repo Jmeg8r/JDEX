@@ -143,11 +143,11 @@ const menuTemplate = [
       },
       {
         label: 'JDex on GitHub',
-        click: () => shell.openExternal('https://github.com/Jmeg8r/JDEX'),
+        click: () => shell.openExternal('https://github.com/As-The-Geek-Learns/JDEX'),
       },
       {
         label: 'Report an Issue',
-        click: () => shell.openExternal('https://github.com/Jmeg8r/JDEX/issues'),
+        click: () => shell.openExternal('https://github.com/As-The-Geek-Learns/JDEX/issues'),
       },
       { type: 'separator' },
       {
