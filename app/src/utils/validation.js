@@ -51,6 +51,7 @@ export function sanitizeText(input) {
       // Remove HTML-significant characters entirely (prevents XSS including malformed tags)
       .replace(/[<>]/g, '')
       // Remove control characters except newlines and tabs
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
       // Normalize multiple spaces to single space
       .replace(/\s+/g, ' ')
@@ -79,6 +80,7 @@ export function sanitizeDescription(input) {
       // Remove HTML-significant characters entirely (prevents XSS including malformed tags)
       .replace(/[<>]/g, '')
       // Remove control characters except newlines, tabs, carriage returns
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
       // Normalize multiple newlines to max 2
       .replace(/\n{3,}/g, '\n\n')
