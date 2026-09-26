@@ -1,0 +1,296 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "JDEX \u2014 Johnny Decimal index manager",
+    "output": "JDEX.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "startup",
+        "label": "App startup",
+        "focus": [
+          "main",
+          "vite",
+          "ui",
+          "dblib",
+          "cdn",
+          "ls"
+        ],
+        "note": "main.js opens one window (Vite in dev, dist/ in production); db.js fetches sql.js and restores the saved database."
+      },
+      {
+        "id": "editing",
+        "label": "Editing the index",
+        "focus": [
+          "ui",
+          "dblib",
+          "sqljs",
+          "ls"
+        ],
+        "note": "Each change runs SQL on the in-memory database, then saveDatabase() writes it back to localStorage."
+      },
+      {
+        "id": "backup",
+        "label": "Backup and restore",
+        "focus": [
+          "ui",
+          "dblib",
+          "sqljs",
+          "files"
+        ],
+        "note": "Export downloads a .sqlite file or a JSON dump; import replaces the database with a .sqlite file."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "vite",
+      "type": "external",
+      "label": "Vite dev server",
+      "sublabel": "localhost:5173",
+      "pos": [
+        40,
+        80
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "dev only"
+    },
+    {
+      "id": "main",
+      "type": "backend",
+      "label": "Electron main",
+      "sublabel": "electron/main.js",
+      "pos": [
+        40,
+        220
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "Electron 35"
+    },
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "System browser",
+      "sublabel": "external links",
+      "pos": [
+        40,
+        360
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "ui",
+      "type": "frontend",
+      "label": "React UI",
+      "sublabel": "src/App.jsx",
+      "pos": [
+        250,
+        220
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "tag": "React 18"
+    },
+    {
+      "id": "dblib",
+      "type": "backend",
+      "label": "Data layer",
+      "sublabel": "src/db.js",
+      "pos": [
+        460,
+        220
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "cdn",
+      "type": "external",
+      "label": "sql.js CDN",
+      "sublabel": "WASM loaded at start",
+      "pos": [
+        460,
+        80
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "sqljs",
+      "type": "database",
+      "label": "In-memory SQLite",
+      "sublabel": "sql.js",
+      "pos": [
+        670,
+        220
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "ls",
+      "type": "database",
+      "label": "localStorage",
+      "sublabel": "jdex_database_v2",
+      "pos": [
+        880,
+        220
+      ],
+      "size": [
+        140,
+        60
+      ]
+    },
+    {
+      "id": "files",
+      "type": "external",
+      "label": "Backup files",
+      "sublabel": ".sqlite / .json",
+      "pos": [
+        460,
+        360
+      ],
+      "size": [
+        140,
+        60
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Electron app",
+      "wraps": [
+        "main",
+        "ui",
+        "dblib",
+        "sqljs",
+        "ls"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Renderer (context isolated)",
+      "wraps": [
+        "ui",
+        "dblib",
+        "sqljs",
+        "ls"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "main-vite",
+      "from": "main",
+      "to": "vite",
+      "label": "dev",
+      "variant": "dashed"
+    },
+    {
+      "id": "main-ui",
+      "from": "main",
+      "to": "ui",
+      "label": "window",
+      "variant": "emphasis"
+    },
+    {
+      "id": "main-browser",
+      "from": "main",
+      "to": "browser",
+      "label": "openExternal",
+      "variant": "dashed",
+      "labelDy": 24
+    },
+    {
+      "id": "ui-db",
+      "from": "ui",
+      "to": "dblib",
+      "variant": "emphasis"
+    },
+    {
+      "id": "db-cdn",
+      "from": "dblib",
+      "to": "cdn",
+      "label": "fetch WASM"
+    },
+    {
+      "id": "db-sql",
+      "from": "dblib",
+      "to": "sqljs",
+      "label": "SQL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sql-ls",
+      "from": "sqljs",
+      "to": "ls",
+      "label": "save",
+      "variant": "emphasis"
+    },
+    {
+      "id": "db-files",
+      "from": "dblib",
+      "to": "files",
+      "label": "export / import",
+      "variant": "dashed",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Desktop shell",
+      "items": [
+        "One BrowserWindow, no preload or IPC",
+        "nodeIntegration off, contextIsolation on",
+        "External links open in the system browser"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Index model",
+      "items": [
+        "Area > Category > Folder > Item",
+        "Storage locations and cloud drive mappings",
+        "Activity log of changes"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Persistence",
+      "items": [
+        "sql.js WASM fetched from sql.js.org at start",
+        "Database bytes kept in localStorage",
+        "Startup needs network for the CDN load"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Packaging",
+      "items": [
+        "electron-builder: DMG/ZIP, NSIS/portable, AppImage/deb",
+        "macOS notarization via scripts/notarize.js",
+        "Windows signing via scripts/sign-windows.cjs"
+      ]
+    }
+  ]
+}
