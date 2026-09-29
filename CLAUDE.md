@@ -93,7 +93,7 @@ which the hook doesn't read.
   (`Jmeg8r/JDEX`) is a push mirror. Push branches to `origin` and open PRs with
   `forge-pr create`; `gh` is read-only here. There is no AI-review gate kit in this repo, so
   `forge-pr status` shows no gate verdict and James merges in the forge UI.
-- **CI** (`.github/workflows/ci.yml`, run by the forge) on every PR and push to `main`: lint
+- **CI** (`.github/workflows/ci.yml`, run by the forge) on PRs targeting `main` and pushes to `main`: lint
   and format check, `npm audit --audit-level=high` (non-blocking: `continue-on-error`),
   Semgrep, gitleaks, and the Vite build.
 - **Branch names** follow the global prefixes (`feat/`, `fix/`, `docs/`, `chore/`, `ci/`); the
