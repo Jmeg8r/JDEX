@@ -4,8 +4,9 @@ Desktop app for managing a [Johnny Decimal](https://johnnydecimal.com/) file-org
 system: visual index manager with CRUD, search, and import/export. This is the free/public
 repo; the licensed premium build is the separate `jdex-premium` repo and checkout (not a git
 remote of this one), and the two have diverged: don't assume parity (see Gotchas).
-Electron + React (JSX, no TypeScript), Tailwind, SQLite via sql.js (WASM). ES modules
-throughout (`"type": "module"`), Electron main process included. Versions and scripts:
+Electron + React (JSX, no TypeScript), Tailwind, SQLite via sql.js (WASM). The app is
+ES modules (`"type": "module"`), Electron main process included; the Windows signing hook
+`app/scripts/sign-windows.cjs` is the CommonJS exception. Versions and scripts:
 `app/package.json`.
 
 ## Structure
@@ -16,7 +17,8 @@ not a components/services/context tree:
 - `App.jsx`: all UI state, navigation, and feature wiring; new features wire in here
 - `db.js`: all schema, migrations, and CRUD
 - `utils/errors.js`, `utils/validation.js`: error classes and input sanitization
-- `electron/main.js`: Electron main process, IPC handlers
+- `electron/main.js`: Electron main process: window, menus, app lifecycle (no IPC handlers
+  or preload bridge exist)
 
 Read first in a fresh session: `App.jsx`, `db.js`, `app/tailwind.config.js`.
 
@@ -35,7 +37,7 @@ glass effect is the `glass-card` class and the fade animations are keyframes in
 Areas (10-19, 20-29, ...)                  # Broad life/work categories
   └── Categories (11, 12, ...)             # Topic groups within an area
       └── Folders (11.01, 11.02, ...)      # Container folders
-          └── Items (11.01.001, ...)       # Individual tracked objects
+          └── Items (11.01.01, ...)        # Individual tracked objects
 ```
 
 ## Gotchas
@@ -49,9 +51,11 @@ Areas (10-19, 20-29, ...)                  # Broad life/work categories
   or `useLicense()`; those live only in `jdex-premium`. `db.js` still carries CRUD blocks
   marked "(Premium Feature)" (cloud drives, organization rules, watched folders) that no UI
   in this repo uses. Don't port gating code in.
-- **Schema changes**: bump the `SCHEMA_VERSION` constant in `db.js` and add a matching
-  `if (currentVersion < N)` branch in `runMigrations()`; the `schema_version` table records
-  the applied version.
+- **Schema changes**: bump the `SCHEMA_VERSION` constant in `db.js`, add a matching
+  `if (currentVersion < N)` branch in `runMigrations()`, AND make the same change in
+  `createTables()`. Only saved databases run migrations; a fresh database runs
+  `createTables()` and is stamped with the current `SCHEMA_VERSION` straight away, so a
+  change made only in a migration never reaches new installs. Test both paths.
 - **No git hook runs here.** `core.hooksPath` points at a lefthook shim and the repo has no
   `lefthook.yml`, so `.husky/pre-commit` (lint-staged) never fires. Run
   `npm run lint:fix && npm run format` yourself before every commit; CI checks
@@ -67,14 +71,20 @@ Areas (10-19, 20-29, ...)                  # Broad life/work categories
 
 | Command | Purpose |
 |---|---|
-| `npm install && npm run electron:dev` | First-time setup / hot-reload dev (Node 20+, as in CI; macOS is the primary dev platform) |
+| `npm install && NODE_ENV=development npm run electron:dev` | First-time setup / hot-reload dev (Node 20.19+ or 22.12+, which Vite 7 requires; CI uses Node 20; macOS is the primary dev platform) |
 | `npm run build` | Vite production build (what CI's Build job runs) |
 | `npm run electron:build:mac` (also `:win`, `:linux`) | Platform build |
 | `npm run lint:fix && npm run format` | Before every commit |
 
-Release builds need code signing: Apple Developer account, certificates and notarization
-credentials in env vars (macOS); the FTL Consulting LLC EV certificate (Windows). See
-`app/DISTRIBUTION-SETUP.md` and `app/NOTARIZATION-SETUP.md`.
+**`electron:dev` needs `NODE_ENV=development`**: the script doesn't set it, and without it
+`electron/main.js` loads the last `dist/` build instead of the Vite server, so you'd be
+looking at stale code.
+
+Release builds need code signing: Apple Developer account and certificates (macOS); the FTL
+Consulting LLC EV certificate (Windows). Notarization (`app/scripts/notarize.js`, the
+`afterSign` hook) reads the Keychain profile `notarytool-profile`, not env vars; the setup
+guides `app/DISTRIBUTION-SETUP.md` and `app/NOTARIZATION-SETUP.md` name it `AC_PASSWORD`,
+which the hook doesn't read.
 
 ## Git workflow
 
@@ -109,7 +119,7 @@ premium repo's scripted verify/ship pipeline exists here. What this repo adds:
   `utils/errors.js` rather than swallowing errors; never expose sensitive data in errors or
   logs; run `npm audit` before shipping, since CI's audit step doesn't block.
 - **VERIFY**: lint, format check, `npm run build`, `npm audit`; for UI changes, check them
-  visually in `npm run electron:dev` and capture screenshots.
+  visually in `NODE_ENV=development npm run electron:dev` and capture screenshots.
 - **Session notes**, kept up as you go in
   `.workflow/sessions/SESSION-YYYY-MM-DD-<slug>/session.md` (no template; follow the existing
   ones): changes made, issues hit, verification status, and any accepted risks. After
