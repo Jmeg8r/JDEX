@@ -6,8 +6,9 @@ repo; the licensed premium build is the separate `jdex-premium` repo and checkou
 remote of this one), and the two have diverged: don't assume parity (see Gotchas).
 Electron + React (JSX, no TypeScript), Tailwind, SQLite via sql.js (WASM). The app is
 ES modules (`"type": "module"`), Electron main process included; the Windows signing hook
-`app/scripts/sign-windows.cjs` is the CommonJS exception. Versions and scripts:
-`app/package.json`.
+`app/scripts/sign-windows.cjs` is the CommonJS exception (`electron/electron-main.js` also
+uses `require()`, but it is an unused legacy file: `package.json` `main` is
+`electron/main.js`). Versions and scripts: `app/package.json`.
 
 ## Structure
 
@@ -22,9 +23,9 @@ not a components/services/context tree:
 
 Read first in a fresh session: `App.jsx`, `db.js`, `app/tailwind.config.js`.
 
-**Style**: functional components and hooks only: no classes, no Redux, no Context, no service
-layer. Tailwind utility classes for all styling, Lucide React for all icons, parameterized
-sql.js queries for every database operation.
+**Style**: React functional components and hooks only: no React class components, no Redux, no
+Context, no service layer. Tailwind utility classes for all styling, Lucide React for all
+icons, parameterized sql.js queries for every database operation.
 
 **Theme**: dark only. Brand colors `jd-navy`/`jd-teal`/`jd-orange` (plus `jd-slate`,
 `jd-light`) and fonts Inter (sans) / JetBrains Mono (mono) in `app/tailwind.config.js`; the
