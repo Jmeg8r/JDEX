@@ -1,7 +1,7 @@
 # JDex - Johnny Decimal Index Manager
 
 <div align="center">
-  <img src="public/jdex-icon.svg" alt="JDex Logo" width="128" height="128">
+  <img src="app/public/jdex-icon.svg" alt="JDex Logo" width="128" height="128">
   
   **Personal Knowledge Organization Made Simple**
   
@@ -46,7 +46,7 @@ Every item has a unique identifier. Need that invoice? It's in `11.01`. Need the
 
 - 🗂️ **Visual Index Management** - Browse and manage your Johnny Decimal categories with a clean, modern interface
 - 🔍 **Instant Search** - Find any item by number or title in milliseconds
-- 📊 **SQLite Backend** - Your index is stored in a portable, reliable database
+- 📊 **SQLite Backend** - Your index is a SQLite database (sql.js), saved locally and exportable
 - 🎨 **Clean UI** - Built with React and Tailwind CSS for a beautiful experience
 - 💾 **Local-First** - Your data stays on your machine, no cloud required
 - 🔄 **Import/Export** - Backup and share your organizational structure
@@ -60,7 +60,7 @@ Every item has a unique identifier. Need that invoice? It's in `11.01`. Need the
 
 1. Download the latest `.dmg` file from [Releases](https://github.com/As-The-Geek-Learns/JDEX/releases)
 2. Open the DMG and drag JDex to Applications
-3. First launch: Right-click → Open (macOS security requirement for unsigned apps)
+3. If macOS blocks the first launch (for example, a build that was not notarized), right-click → Open
 4. Subsequent launches: Just double-click
 
 ### Windows
@@ -121,10 +121,13 @@ Linux builds (AppImage, .deb) are in development. Follow this repo for updates!
 git clone https://github.com/As-The-Geek-Learns/JDEX.git
 cd JDEX
 
+# The app lives in app/
+cd app
+
 # Install dependencies
 npm install
 
-# Run in development mode
+# Run in development mode (Vite on :5173 + Electron)
 npm run electron:dev
 ```
 
@@ -134,35 +137,62 @@ npm run electron:dev
 # Build for your current platform
 npm run electron:build
 
-# Output will be in dist-electron/
+# Output will be in app/dist-electron/
 ```
 
-For detailed build instructions, see [DISTRIBUTION-SETUP.md](DISTRIBUTION-SETUP.md)
+Per-platform builds: `npm run electron:build:mac`, `electron:build:win`, `electron:build:linux`.
+For detailed build instructions, see [app/DISTRIBUTION-SETUP.md](app/DISTRIBUTION-SETUP.md).
 
 ---
 
 ## Technology Stack
 
-- **Frontend:** React 18, Tailwind CSS
-- **Desktop Framework:** Electron 28
-- **Database:** SQLite (via sql.js)
-- **Build System:** Vite, electron-builder
+- **Frontend:** React 18, Tailwind CSS 3.4
+- **Desktop Framework:** Electron 35
+- **Database:** SQLite via sql.js (WebAssembly)
+- **Build System:** Vite 7, electron-builder 26
 - **Icons:** Lucide React
+
+### How data is stored
+
+The whole database lives in the renderer process. At startup `app/src/db.js` loads the sql.js
+WebAssembly build from the sql.js CDN (`sql.js.org`), then restores the database from the
+browser `localStorage` of the Electron window. Every change is written back to `localStorage`.
+Use export (a `.sqlite` backup or a JSON dump) and import (`.sqlite`) to back it up or move it. Because sql.js is fetched from the CDN, the app
+needs network access when it starts.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Main["Electron main process<br/>app/electron/main.js"] -->|"BrowserWindow<br/>contextIsolation on"| UI["React UI<br/>app/src/App.jsx"]
+    UI --> DB["Data layer<br/>app/src/db.js"]
+    DB -->|"loads WASM at startup"| CDN["sql.js CDN"]
+    DB --> SQL[("In-memory SQLite<br/>(sql.js)")]
+    SQL -->|"saved on every change"| LS[("localStorage<br/>jdex_database_v2")]
+    DB -->|"export / import"| Files["Backup file"]
+```
+
+A rendered diagram is in [`docs/diagrams/JDEX.architecture.svg`](docs/diagrams/JDEX.architecture.svg)
+(source: `docs/diagrams/JDEX.architecture.json`).
 
 ---
 
 ## Project Structure
 
 ```
-jdex/
-├── public/           # Static assets
-├── src/              # React application source
-│   ├── components/   # React components
-│   ├── services/     # Database and business logic
-│   └── utils/        # Helper functions
-├── electron/         # Electron main process
-├── build/            # Build resources (icons, entitlements)
-└── dist-electron/    # Build output
+JDEX/
+├── app/                      # The Electron app (run npm commands here)
+│   ├── electron/main.js      # Electron main process (package.json "main")
+│   ├── src/
+│   │   ├── App.jsx           # React UI (single-file app)
+│   │   ├── db.js             # sql.js database: schema, CRUD, search, import/export
+│   │   └── utils/            # Validation and error helpers
+│   ├── public/               # Static assets (icon)
+│   ├── scripts/              # Icon generation, notarization, Windows signing
+│   └── dist-electron/        # Build output (generated)
+├── scripts/                  # Helpers to create Johnny Decimal folders (macOS / Windows)
+└── docs/                     # System documentation and diagrams
 ```
 
 ---
